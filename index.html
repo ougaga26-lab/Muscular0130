@@ -539,7 +539,6 @@
     <script>
         // 密碼保護
         const correctPassword = 'Quorra2026';
-        const apiKey = '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';
         const AUTH_SESSION = 'auth_session';
 
         // 檢查是否已驗證
@@ -642,12 +641,12 @@
             try {
                 const base64Image = uploadedImage.src.split(',')[1];
                 
-                const response = await fetch('https://api.anthropic.com/v1/messages', {
+                // 使用 Cloudflare Worker API
+                const response = await fetch('https://anatomy-api.ougaga26.workers.dev', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
-                        'x-api-key': apiKey,
-                        'anthropic-version': '2023-06-01'
+                        'X-Password': correctPassword,
                     },
                     body: JSON.stringify({
                         model: 'claude-sonnet-4-20250514',
