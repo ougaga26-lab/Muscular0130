@@ -1,0 +1,760 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>解剖圖片辨識器</title>
+    <link href="https://fonts.googleapis.com/css2?family=Crimson+Pro:wght@400;600;700&family=Work+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #2c5f7c;
+            --secondary: #8b4f4b;
+            --accent: #d4a373;
+            --bg: #f8f6f3;
+            --card: #ffffff;
+            --text: #2a2a2a;
+            --border: #d4cfc4;
+        }
+
+        body {
+            font-family: 'Work Sans', sans-serif;
+            background: linear-gradient(135deg, #f8f6f3 0%, #ebe8e1 100%);
+            color: var(--text);
+            min-height: 100vh;
+            padding: 2rem;
+        }
+
+        /* 密碼保護畫面 */
+        .auth-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, #f8f6f3 0%, #ebe8e1 100%);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+        }
+
+        .auth-overlay.hidden {
+            display: none;
+        }
+
+        .auth-box {
+            background: var(--card);
+            border-radius: 20px;
+            padding: 3rem;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.15);
+            border: 2px solid var(--border);
+            max-width: 500px;
+            width: 90%;
+            text-align: center;
+        }
+
+        .auth-box h2 {
+            font-family: 'Crimson Pro', serif;
+            font-size: 2.5rem;
+            color: var(--primary);
+            margin-bottom: 1rem;
+        }
+
+        .auth-box p {
+            color: var(--secondary);
+            margin-bottom: 2rem;
+            font-size: 1.1rem;
+        }
+
+        .auth-input {
+            width: 100%;
+            padding: 1rem 1.5rem;
+            border: 2px solid var(--border);
+            border-radius: 10px;
+            font-size: 1.1rem;
+            margin-bottom: 1rem;
+            transition: all 0.3s ease;
+        }
+
+        .auth-input:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(44, 95, 124, 0.1);
+        }
+
+        .auth-btn {
+            width: 100%;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            color: white;
+            border: none;
+            padding: 1rem 2rem;
+            font-size: 1.1rem;
+            font-weight: 600;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 5px 20px rgba(44, 95, 124, 0.3);
+        }
+
+        .auth-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(44, 95, 124, 0.4);
+        }
+
+        .auth-error {
+            color: #c00;
+            font-size: 0.9rem;
+            margin-top: 0.5rem;
+            display: none;
+        }
+
+        .auth-error.show {
+            display: block;
+        }
+
+        /* 主要內容 */
+        .main-content {
+            display: none;
+        }
+
+        .main-content.visible {
+            display: block;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            font-family: 'Crimson Pro', serif;
+            font-size: 3.5rem;
+            font-weight: 700;
+            color: var(--primary);
+            margin-bottom: 1rem;
+            letter-spacing: -0.5px;
+            text-shadow: 2px 2px 0px rgba(212, 163, 115, 0.15);
+        }
+
+        .subtitle {
+            font-size: 1.1rem;
+            color: var(--secondary);
+            margin-bottom: 3rem;
+            font-weight: 400;
+        }
+
+        .upload-section {
+            background: var(--card);
+            border-radius: 20px;
+            padding: 3rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.08);
+            border: 2px solid var(--border);
+            transition: all 0.3s ease;
+        }
+
+        .upload-section:hover {
+            box-shadow: 0 15px 50px rgba(0,0,0,0.12);
+            transform: translateY(-2px);
+        }
+
+        .upload-zone {
+            border: 3px dashed var(--accent);
+            border-radius: 15px;
+            padding: 3rem;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background: linear-gradient(135deg, rgba(212, 163, 115, 0.05) 0%, rgba(44, 95, 124, 0.05) 100%);
+        }
+
+        .upload-zone:hover {
+            border-color: var(--primary);
+            background: linear-gradient(135deg, rgba(212, 163, 115, 0.1) 0%, rgba(44, 95, 124, 0.1) 100%);
+        }
+
+        .upload-zone.dragging {
+            border-color: var(--secondary);
+            background: rgba(139, 79, 75, 0.1);
+        }
+
+        input[type="file"] {
+            display: none;
+        }
+
+        .upload-label {
+            font-size: 1.3rem;
+            color: var(--primary);
+            font-weight: 600;
+            display: block;
+            margin-bottom: 0.5rem;
+        }
+
+        .upload-hint {
+            color: #666;
+            font-size: 0.95rem;
+        }
+
+        .process-btn {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            color: white;
+            border: none;
+            padding: 1rem 3rem;
+            font-size: 1.1rem;
+            font-weight: 600;
+            border-radius: 50px;
+            cursor: pointer;
+            margin-top: 1.5rem;
+            transition: all 0.3s ease;
+            box-shadow: 0 5px 20px rgba(44, 95, 124, 0.3);
+        }
+
+        .process-btn:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(44, 95, 124, 0.4);
+        }
+
+        .process-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .results {
+            display: none;
+            animation: fadeIn 0.6s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* 上方區塊：標題 + 圖片 */
+        .result-header-section {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 3rem;
+            margin-bottom: 3rem;
+            background: var(--card);
+            border-radius: 20px;
+            padding: 3rem;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.08);
+            border: 2px solid var(--border);
+        }
+
+        .title-section {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            gap: 1rem;
+        }
+
+        .result-title-en {
+            font-family: 'Crimson Pro', serif;
+            font-size: 3.5rem;
+            font-weight: 700;
+            color: var(--primary);
+            line-height: 1.2;
+            letter-spacing: -0.5px;
+        }
+
+        .result-title-zh {
+            font-family: 'Crimson Pro', serif;
+            font-size: 2.5rem;
+            font-weight: 600;
+            color: var(--secondary);
+            line-height: 1.3;
+        }
+
+        .image-section {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .cropped-image-container {
+            width: 100%;
+            text-align: center;
+        }
+
+        .cropped-image {
+            max-width: 100%;
+            max-height: 400px;
+            height: auto;
+            border-radius: 15px;
+            box-shadow: 0 5px 25px rgba(0,0,0,0.15);
+        }
+
+        .download-section {
+            margin-top: 1.5rem;
+            text-align: center;
+        }
+
+        .download-btn {
+            background: var(--accent);
+            color: white;
+            border: none;
+            padding: 0.8rem 2rem;
+            font-size: 1rem;
+            font-weight: 600;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 5px 15px rgba(212, 163, 115, 0.3);
+        }
+
+        .download-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(212, 163, 115, 0.4);
+            background: #c9956a;
+        }
+
+        /* 下方區塊：英文 + 中文 */
+        .result-content-section {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 3rem;
+        }
+
+        .content-column {
+            background: var(--card);
+            border-radius: 20px;
+            padding: 3rem;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.08);
+            border: 2px solid var(--border);
+        }
+
+        .column-title {
+            font-family: 'Crimson Pro', serif;
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: var(--primary);
+            margin-bottom: 2rem;
+            padding-bottom: 1rem;
+            border-bottom: 3px solid var(--accent);
+        }
+
+        .info-block {
+            margin-bottom: 2rem;
+        }
+
+        .info-block:last-child {
+            margin-bottom: 0;
+        }
+
+        .info-block-title {
+            font-family: 'Crimson Pro', serif;
+            font-size: 1.3rem;
+            font-weight: 700;
+            color: var(--secondary);
+            margin-bottom: 0.8rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .info-block-content {
+            font-size: 1rem;
+            line-height: 1.8;
+            color: var(--text);
+            padding-left: 0.5rem;
+        }
+
+        .info-block-content ul {
+            list-style: none;
+            padding-left: 0;
+            margin: 0;
+        }
+
+        .info-block-content li {
+            padding: 0.5rem 0;
+            padding-left: 1.5rem;
+            position: relative;
+        }
+
+        .info-block-content li:before {
+            content: "●";
+            position: absolute;
+            left: 0;
+            color: var(--accent);
+            font-size: 0.8rem;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 2rem;
+            display: none;
+        }
+
+        .loading.active {
+            display: block;
+        }
+
+        .spinner {
+            border: 4px solid var(--border);
+            border-top: 4px solid var(--primary);
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 1rem;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .preview-image {
+            max-width: 100%;
+            height: auto;
+            border-radius: 15px;
+            margin-top: 1rem;
+            box-shadow: 0 5px 25px rgba(0,0,0,0.15);
+        }
+
+        canvas {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <!-- 密碼保護畫面 -->
+    <div class="auth-overlay" id="authOverlay">
+        <div class="auth-box">
+            <h2>🔐 驗證身份</h2>
+            <p>請輸入密碼以使用解剖圖片辨識器</p>
+            <input 
+                type="password" 
+                id="passwordInput" 
+                class="auth-input" 
+                placeholder="請輸入密碼"
+                autocomplete="off"
+            >
+            <div class="auth-error" id="authError">❌ 密碼錯誤，請重試</div>
+            <button class="auth-btn" id="authBtn">進入</button>
+        </div>
+    </div>
+
+    <!-- 主要內容 -->
+    <div class="main-content" id="mainContent">
+        <div class="container">
+            <h1>🫁 解剖圖片辨識器</h1>
+            <p class="subtitle">上傳解剖學圖片，自動識別標題、裁切圖像並提取資訊</p>
+
+            <div class="upload-section">
+                <div class="upload-zone" id="uploadZone">
+                    <input type="file" id="fileInput" accept="image/*">
+                    <label class="upload-label" for="fileInput">📤 點擊或拖曳上傳圖片</label>
+                    <p class="upload-hint">支援 JPG、PNG 格式</p>
+                </div>
+                <div id="previewContainer"></div>
+                <button class="process-btn" id="processBtn" disabled>開始分析</button>
+            </div>
+
+            <div class="loading" id="loading">
+                <div class="spinner"></div>
+                <p>正在分析圖片，請稍候...</p>
+            </div>
+
+            <div class="results" id="results">
+                <!-- 上方區塊：標題 + 圖片 -->
+                <div class="result-header-section">
+                    <div class="title-section">
+                        <div class="result-title-en" id="resultTitle">Muscle Name</div>
+                        <div class="result-title-zh" id="resultTitleChinese">肌肉名稱</div>
+                    </div>
+                    <div class="image-section">
+                        <div class="cropped-image-container">
+                            <img id="croppedImage" class="cropped-image" alt="裁切後的圖片">
+                        </div>
+                        <div class="download-section">
+                            <button class="download-btn" id="downloadImage">下載圖片 (JPG)</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 下方區塊：英文 + 中文 -->
+                <div class="result-content-section">
+                    <div class="content-column content-english">
+                        <h3 class="column-title">English Information</h3>
+                        
+                        <div class="info-block">
+                            <div class="info-block-title">Origin</div>
+                            <div class="info-block-content" id="originContent"></div>
+                        </div>
+
+                        <div class="info-block">
+                            <div class="info-block-title">Insertion</div>
+                            <div class="info-block-content" id="insertionContent"></div>
+                        </div>
+
+                        <div class="info-block">
+                            <div class="info-block-title">Action</div>
+                            <div class="info-block-content" id="actionContent"></div>
+                        </div>
+
+                        <div class="info-block">
+                            <div class="info-block-title">Nerve</div>
+                            <div class="info-block-content" id="nerveContent"></div>
+                        </div>
+                    </div>
+
+                    <div class="content-column content-chinese">
+                        <h3 class="column-title">中文翻譯</h3>
+                        
+                        <div class="info-block">
+                            <div class="info-block-title">起始點</div>
+                            <div class="info-block-content" id="originContentChinese"></div>
+                        </div>
+
+                        <div class="info-block">
+                            <div class="info-block-title">結束點</div>
+                            <div class="info-block-content" id="insertionContentChinese"></div>
+                        </div>
+
+                        <div class="info-block">
+                            <div class="info-block-title">動作</div>
+                            <div class="info-block-content" id="actionContentChinese"></div>
+                        </div>
+
+                        <div class="info-block">
+                            <div class="info-block-title">神經支配</div>
+                            <div class="info-block-content" id="nerveContentChinese"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <canvas id="canvas"></canvas>
+
+    <script>
+        // 密碼保護
+        const correctPassword = 'Quorra2026';
+        const apiKey = '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';
+        const AUTH_SESSION = 'auth_session';
+
+        // 檢查是否已驗證
+        function checkAuth() {
+            const session = sessionStorage.getItem(AUTH_SESSION);
+            if (session === 'authenticated') {
+                showMainContent();
+            }
+        }
+
+        // 顯示主要內容
+        function showMainContent() {
+            document.getElementById('authOverlay').classList.add('hidden');
+            document.getElementById('mainContent').classList.add('visible');
+        }
+
+        // 密碼驗證
+        document.getElementById('authBtn').addEventListener('click', verifyPassword);
+        document.getElementById('passwordInput').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') verifyPassword();
+        });
+
+        function verifyPassword() {
+            const input = document.getElementById('passwordInput').value;
+            const error = document.getElementById('authError');
+            
+            if (input === correctPassword) {
+                sessionStorage.setItem(AUTH_SESSION, 'authenticated');
+                showMainContent();
+            } else {
+                error.classList.add('show');
+                document.getElementById('passwordInput').value = '';
+                document.getElementById('passwordInput').focus();
+                setTimeout(() => error.classList.remove('show'), 3000);
+            }
+        }
+
+        // 頁面載入時檢查驗證狀態
+        window.addEventListener('load', checkAuth);
+
+        // 主要功能
+        const fileInput = document.getElementById('fileInput');
+        const uploadZone = document.getElementById('uploadZone');
+        const processBtn = document.getElementById('processBtn');
+        const loading = document.getElementById('loading');
+        const results = document.getElementById('results');
+        const previewContainer = document.getElementById('previewContainer');
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+
+        let uploadedImage = null;
+
+        fileInput.addEventListener('change', handleFileSelect);
+        uploadZone.addEventListener('click', () => fileInput.click());
+
+        uploadZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadZone.classList.add('dragging');
+        });
+
+        uploadZone.addEventListener('dragleave', () => {
+            uploadZone.classList.remove('dragging');
+        });
+
+        uploadZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadZone.classList.remove('dragging');
+            const file = e.dataTransfer.files[0];
+            if (file && file.type.startsWith('image/')) {
+                handleFile(file);
+            }
+        });
+
+        function handleFileSelect(e) {
+            const file = e.target.files[0];
+            if (file) {
+                handleFile(file);
+            }
+        }
+
+        function handleFile(file) {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                uploadedImage = new Image();
+                uploadedImage.onload = () => {
+                    previewContainer.innerHTML = `<img src="${e.target.result}" class="preview-image" alt="預覽">`;
+                    processBtn.disabled = false;
+                };
+                uploadedImage.src = e.target.result;
+            };
+            reader.readAsDataURL(file);
+        }
+
+        processBtn.addEventListener('click', async () => {
+            if (!uploadedImage) return;
+
+            loading.classList.add('active');
+            results.style.display = 'none';
+
+            try {
+                const base64Image = uploadedImage.src.split(',')[1];
+                
+                const response = await fetch('https://api.anthropic.com/v1/messages', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'x-api-key': apiKey,
+                        'anthropic-version': '2023-06-01'
+                    },
+                    body: JSON.stringify({
+                        model: 'claude-sonnet-4-20250514',
+                        max_tokens: 2000,
+                        messages: [{
+                            role: 'user',
+                            content: [
+                                {
+                                    type: 'image',
+                                    source: {
+                                        type: 'base64',
+                                        media_type: 'image/jpeg',
+                                        data: base64Image
+                                    }
+                                },
+                                {
+                                    type: 'text',
+                                    text: `請分析這張解剖學圖片，以 JSON 格式回傳雙語資訊（只回傳 JSON，不要其他文字）：
+
+{
+  "title_en": "肌肉英文名稱",
+  "title_zh": "肌肉中文名稱（台灣醫學用語）",
+  "origin_en": ["起點1英文", "起點2英文"],
+  "origin_zh": ["起點1中文", "起點2中文"],
+  "insertion_en": ["止點1英文", "止點2英文"],
+  "insertion_zh": ["止點1中文", "止點2中文"],
+  "action_en": ["動作1英文", "動作2英文"],
+  "action_zh": ["動作1中文", "動作2中文"],
+  "nerve_en": "神經英文",
+  "nerve_zh": "神經中文"
+}
+
+翻譯要求：
+1. 使用台灣醫學界慣用的專業術語
+2. 解剖位置要完整翻譯（例如："Occipital protuberance" → "枕外隆凸"）
+3. 動作描述要自然（例如："Elevation of scapula" → "肩胛骨上提"）
+4. 保持醫學用語的精確性
+5. 如果有纖維分類（Upper/Middle/Lower fibers），翻譯為"上束/中束/下束纖維"
+6. 確保英文和中文的項目順序完全對應`
+                                }
+                            ]
+                        }]
+                    })
+                });
+
+                const data = await response.json();
+                const text = data.content.map(item => item.text || '').join('\n');
+                
+                const jsonMatch = text.match(/\{[\s\S]*\}/);
+                if (!jsonMatch) {
+                    throw new Error('無法解析回應');
+                }
+                
+                const result = JSON.parse(jsonMatch[0]);
+
+                const cropWidth = uploadedImage.width * 0.4;
+                const cropHeight = uploadedImage.height * 0.8;
+                const cropX = 0;
+                const cropY = uploadedImage.height - cropHeight;
+
+                canvas.width = cropWidth;
+                canvas.height = cropHeight;
+                ctx.drawImage(
+                    uploadedImage,
+                    cropX, cropY, cropWidth, cropHeight,
+                    0, 0, cropWidth, cropHeight
+                );
+
+                const croppedImageData = canvas.toDataURL('image/jpeg', 0.95);
+
+                document.getElementById('resultTitle').textContent = result.title_en || 'Muscle Name';
+                document.getElementById('resultTitleChinese').textContent = result.title_zh || '肌肉名稱';
+                document.getElementById('croppedImage').src = croppedImageData;
+                
+                document.getElementById('originContent').innerHTML = formatContent(result.origin_en);
+                document.getElementById('insertionContent').innerHTML = formatContent(result.insertion_en);
+                document.getElementById('actionContent').innerHTML = formatContent(result.action_en);
+                document.getElementById('nerveContent').innerHTML = formatContent(result.nerve_en);
+
+                document.getElementById('originContentChinese').innerHTML = formatContent(result.origin_zh);
+                document.getElementById('insertionContentChinese').innerHTML = formatContent(result.insertion_zh);
+                document.getElementById('actionContentChinese').innerHTML = formatContent(result.action_zh);
+                document.getElementById('nerveContentChinese').innerHTML = formatContent(result.nerve_zh);
+
+                document.getElementById('downloadImage').onclick = () => {
+                    const link = document.createElement('a');
+                    link.download = `${result.title_en.toLowerCase().replace(/\s+/g, '_')}_anatomy.jpg`;
+                    link.href = croppedImageData;
+                    link.click();
+                };
+
+                loading.classList.remove('active');
+                results.style.display = 'block';
+
+            } catch (error) {
+                console.error('Error:', error);
+                alert('分析失敗，請重試。錯誤：' + error.message);
+                loading.classList.remove('active');
+            }
+        });
+
+        function formatContent(content) {
+            if (Array.isArray(content)) {
+                return '<ul>' + content.map(item => `<li>${item}</li>`).join('') + '</ul>';
+            }
+            return content || '無資訊';
+        }
+    </script>
+</body>
+</html>
