@@ -693,11 +693,18 @@
                 });
 
                 const data = await response.json();
-                const text = data.content.map(item => item.text || '').join('\n');
+                
+                // 檢查錯誤
+                if (!response.ok) {
+                    throw new Error(data.error || `API Error: ${response.status}`);
+                }
+                
+                const text = data.content?.map(item => item.text || '').join('\n') || '';
                 
                 const jsonMatch = text.match(/\{[\s\S]*\}/);
                 if (!jsonMatch) {
-                    throw new Error('無法解析回應');
+                    console.error('API Response:', data);
+                    throw new Error('無法解析 AI 回應，請重試');
                 }
                 
                 const result = JSON.parse(jsonMatch[0]);
@@ -743,7 +750,14 @@
 
             } catch (error) {
                 console.error('Error:', error);
-                alert('分析失敗，請重試。錯誤：' + error.message);
+                console.error('Error details:', error.message);
+                let errorMessage = '分析失敗，請重試。';
+                if (error.message.includes('Invalid password')) {
+                    errorMessage = '密碼驗證失敗，請聯絡管理員';
+                } else if (error.message) {
+                    errorMessage = `錯誤：${error.message}`;
+                }
+                alert(errorMessage);
                 loading.classList.remove('active');
             }
         });
